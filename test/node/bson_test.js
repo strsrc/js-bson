@@ -1766,6 +1766,41 @@ describe('BSON', function () {
     expect(() => BSON.serialize(badMap)).to.throw(/invalid _bsontype/);
   });
 
+  /**
+   * @ignore
+   */
+  it('Should correctly deserialize into the specified type', function (done) {
+    class ObjClass {
+      value = 1;
+    }
+
+    class ArrItemClass {
+      value = 2;
+    }
+
+    class DocClass {
+      obj = null;
+      arr = null;
+
+      static ['--fieldsType'] = {
+        obj: ObjClass,
+        arr: ArrItemClass
+      };
+    }
+    const doc = new DocClass();
+    doc.obj = new ObjClass();
+    doc.arr = [new ArrItemClass()];
+
+    var serialized_data = BSON.serialize(doc);
+    var doc2 = BSON.deserialize(serialized_data, { schemeClass: DocClass });
+
+    expect(doc2).to.deep.equal(doc);
+    expect(doc2).to.instanceOf(DocClass);
+    expect(doc2.obj).to.instanceOf(ObjClass);
+    expect(doc2.arr[0]).to.instanceOf(ArrItemClass);
+    done();
+  });
+
   describe('Should support util.inspect for', function () {
     /**
      * @ignore

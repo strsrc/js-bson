@@ -17,6 +17,12 @@ import { Timestamp } from '../timestamp';
 import { ByteUtils } from '../utils/byte_utils';
 import { NumberUtils } from '../utils/number_utils';
 
+interface SchemeClass {
+  new (...args: never[]): Document;
+
+  ['--fieldsType']?: { [key: string]: SchemeClass };
+}
+
 /** @public */
 export interface DeserializeOptions {
   /**
@@ -77,6 +83,8 @@ export interface DeserializeOptions {
    * ```
    */
   validation?: { utf8: boolean | Record<string, true> | Record<string, false> };
+
+  schemeClass?: SchemeClass;
 }
 
 // Internal long versions
@@ -207,7 +215,15 @@ function deserializeObject(
   if (size < 5 || size > buffer.length) throw new BSONError('corrupt bson message');
 
   // Create holding object
-  const object: Document = isArray ? [] : {};
+  let object: Document;
+  if (isArray) {
+    object = [];
+  } else if (options.schemeClass) {
+    object = new options.schemeClass();
+  } else {
+    object = Object.create(null);
+  }
+
   // Used for arrays to skip having to perform utf8 decoding
   let arrayIndex = 0;
   const done = false;
@@ -302,7 +318,19 @@ function deserializeObject(
         if (!globalUTFValidation) {
           objectOptions = { ...options, validation: { utf8: shouldValidateKey } };
         }
+        let originSchemeClass = options?.schemeClass;
+        if (!isArray) {
+          originSchemeClass = options?.schemeClass;
+          if (originSchemeClass !== undefined) {
+            options.schemeClass = options.schemeClass?.['--fieldsType']?.[name];
+          }
+        }
+
         value = deserializeObject(buffer, _index, objectOptions, false);
+
+        if (originSchemeClass !== undefined) {
+          options.schemeClass = originSchemeClass;
+        }
       }
 
       index = index + objectSize;
@@ -322,7 +350,17 @@ function deserializeObject(
       if (!globalUTFValidation) {
         arrayOptions = { ...arrayOptions, validation: { utf8: shouldValidateKey } };
       }
+      const originSchemeClass = options?.schemeClass;
+      if (originSchemeClass !== undefined) {
+        options.schemeClass = options.schemeClass?.['--fieldsType']?.[name];
+      }
+
       value = deserializeObject(buffer, _index, arrayOptions, true);
+
+      if (originSchemeClass !== undefined) {
+        options.schemeClass = originSchemeClass;
+      }
+
       index = index + objectSize;
 
       if (buffer[index - 1] !== 0) throw new BSONError('invalid array terminator byte');

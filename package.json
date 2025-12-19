@@ -1,5 +1,5 @@
 {
-  "name": "@strstr/bson",
+  "name": "@strsrc/bson",
   "description": "A bson parser for node.js and the browser",
   "keywords": [
     "mongodb",
@@ -24,6 +24,9 @@
   "repository": "mongodb/js-bson",
   "bugs": {
     "url": "https://jira.mongodb.org/projects/NODE/issues/"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
